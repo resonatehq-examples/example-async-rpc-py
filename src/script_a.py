@@ -1,9 +1,10 @@
 from resonate import Resonate, Context
-from threading import Event
+import uuid
 
-app_node_group = "service_a"
 
-resonate = Resonate().remote(
+app_node_group = "script_a"
+
+resonate = Resonate.remote(
     group=app_node_group,
 )
 
@@ -15,11 +16,13 @@ def bar(context: Context, arg: str):
     return result
 
 
-def main():
-    resonate.start()
-    print("service a is running")
-    Event().wait()
+def foo():
+    try:
+        result = bar.run(str(uuid.uuid4()), arg="hello from foo")
+        print(result)
+    except Exception as e:
+        print(e)
 
 
 if __name__ == "__main__":
-    main()
+    foo()
