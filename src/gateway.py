@@ -35,6 +35,8 @@ def _run_async(coro: Any) -> Any:
 
 
 async def _create_resonate() -> Resonate:
+    # Resonate.__init__ calls asyncio.create_task() and asyncio.Future(), so
+    # it must be constructed while the event loop is running.
     return Resonate(
         url=os.environ.get("RESONATE_URL", "http://localhost:8001"),
         group="gateway",
@@ -42,6 +44,23 @@ async def _create_resonate() -> Resonate:
 
 
 _resonate = _run_async(_create_resonate())
+
+
+# ---------------------------------------------------------------------------
+# Helper: rpc() also creates asyncio primitives internally, so every call to
+# it must happen on the background loop too.  This coroutine dispatches the
+# rpc and awaits the result in one shot, keeping Flask handlers loop-free.
+# ---------------------------------------------------------------------------
+
+
+async def _rpc_and_await(target: str, promise_id: str, func: str, *args: Any) -> Any:
+    handle = _resonate.options(target=target).rpc(promise_id, func, *args)
+    return await handle.result()
+
+
+async def _rpc_fire_and_forget(target: str, promise_id: str, func: str, *args: Any) -> None:
+    _resonate.options(target=target).rpc(promise_id, func, *args)
+
 
 # ---------------------------------------------------------------------------
 # Flask app
@@ -58,9 +77,8 @@ def await_chain_route_handler() -> Any:
     try:
         print("running await_chain_route_handler")
         promise_id = "await-chain"
-        handle = _resonate.options(target="service-a").rpc(promise_id, "foo")
+        message = _run_async(_rpc_and_await("service-a", promise_id, "foo"))
         print("waiting on result")
-        message = _run_async(handle.result())
         return jsonify({"message": message}), 200
     except Exception as e:
         print(e)
@@ -72,7 +90,7 @@ def detached_chain_route_handler() -> Any:
     try:
         print("running detached_chain_route_handler")
         promise_id = "detached-chain"
-        _resonate.options(target="service-d").rpc(promise_id, "qux", 1)
+        _run_async(_rpc_fire_and_forget("service-d", promise_id, "qux", 1))
         message = "detached-chain started"
         return jsonify({"message": message}), 200
     except Exception as e:
@@ -85,9 +103,8 @@ def fan_out_workflow_route_handler() -> Any:
     try:
         print("running fan-out-workflow_route_handler")
         promise_id = "fan-out-workflow"
-        handle = _resonate.options(target="service-g").rpc(promise_id, "zim", 1)
+        message = _run_async(_rpc_and_await("service-g", promise_id, "zim", 1))
         print("waiting on result")
-        message = _run_async(handle.result())
         return jsonify({"message": message}), 200
     except Exception as e:
         print(e)
