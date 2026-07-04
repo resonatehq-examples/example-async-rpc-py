@@ -19,7 +19,7 @@ async def zim(ctx: Context, arg: int) -> int:
     return result_bar + result_baz + arg
 
 
-async def main() -> None:
+async def _main() -> None:
     r = Resonate(
         url=os.environ.get("RESONATE_URL", "http://localhost:8001"),
         group="service-g",
@@ -29,5 +29,9 @@ async def main() -> None:
     await asyncio.Event().wait()
 
 
+def main() -> None:
+    asyncio.run(_main())
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

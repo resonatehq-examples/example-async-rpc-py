@@ -15,7 +15,7 @@ async def rax(ctx: Context) -> int:
     return 1
 
 
-async def main() -> None:
+async def _main() -> None:
     r = Resonate(
         url=os.environ.get("RESONATE_URL", "http://localhost:8001"),
         group="service-h",
@@ -25,5 +25,9 @@ async def main() -> None:
     await asyncio.Event().wait()
 
 
+def main() -> None:
+    asyncio.run(_main())
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
