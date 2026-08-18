@@ -68,11 +68,16 @@ Within functions that transition from Ephemeral to Durable it is recommended to 
 
 The Durable APIs are the APIs that are available inside the Durable Call Graph.
 
-There are 3 Durable remote invocation APIs that are available on the Context object that is passed into a function invoked via Resonate.
+There are 2 Durable remote invocation APIs that are available on the Context object that is passed into a function invoked via Resonate.
 
-- `context.rfi()` a fully asynchronous remote invocation API which returns a promise that can be awaited on at any point later on. This is showcased in the Fan-Out Workflow example flow.
-- `context.rfc()` a syntactical sugar API that blocks and returns the result of the invoked function. This is showcased in the Await Chain example flow.
+- `context.rpc()` invokes a function in a remote process and returns a future. Awaiting the future immediately blocks until the result comes back — this is the Await Chain example flow. Holding several futures and awaiting them later runs the invocations concurrently — this is the Fan-out Workflow example flow.
 - `context.detached()` enables the caller to invoke a function and return without waiting on a promise or a result. This is showcased in the Detached Chain example flow.
+
+The routing target for each invocation is set with `context.options(target=...)`, which must precede the call:
+
+```python
+result = await ctx.options(target="service-b").rpc("bar")
+```
 
 Within Durable functions you don't need to use `try/except` statements to handle errors because Resonate catches the errors and automatically retries functions that return them.
 
@@ -95,9 +100,11 @@ Practically, a 5-10 second sleep should be added to one of the functions in the 
 example:
 
 ```python
-def baz(_):
+from datetime import timedelta
+
+async def baz(ctx):
     # ...
-    yield ctx.sleep(10)
+    await ctx.sleep(timedelta(seconds=10))
     # ...
 ```
 
@@ -212,7 +219,7 @@ The Fan-out Workflow request is one where multiple functions are invoked from a 
 
 Resonate transitions the request from ephemeral to durable at the route handler.
 
-The `zim()` function then acts as a workflow, invoking `rax()` and `dop()` asynchronously, that is — receiving promises at their invocation and awaiting on the results via the promises later on.
+The `zim()` function then acts as a workflow, invoking `rax()` and `dop()` asynchronously, that is — receiving a future from each invocation and awaiting on the results via those futures later on.
 
 The `zim()` function combines the results of the steps and returns it to the caller where the result is printed.
 
@@ -248,11 +255,7 @@ uv run i
 
 _Terminal 5_
 
-```shell
-uv run h
-```
-
-Example cURL request:
+Send the cURL request:
 
 ```shell
 curl -X POST http://127.0.0.1:5000/fan-out-workflow
