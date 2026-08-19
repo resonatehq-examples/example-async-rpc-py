@@ -32,7 +32,7 @@ After cloning this repo, change directory into the root of the project and run t
 uv sync
 ```
 
-This example application requires that a [Resonate Server](https://docs.resonatehq.io/get-started/server-quickstart) is running locally.
+This example application requires that a [Resonate Server](https://docs.resonatehq.io/deploy/run-server) is running locally.
 
 ## Resonate's remote invocations
 
